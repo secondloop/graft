@@ -268,7 +268,9 @@ struct ImageRecipeTests {
         #expect(try VMNetwork(spec: "nat").tartFlags == [])
         #expect(try VMNetwork(spec: "bridged:en8").tartFlags == ["--net-bridged=en8"])
         #expect(try VMNetwork(spec: "bridged=Wi-Fi").tartFlags == ["--net-bridged=Wi-Fi"])
-        #expect(try VMNetwork(spec: "softnet").tartFlags == ["--net-softnet"])
+        let softnet = try VMNetwork(spec: "softnet").tartFlags
+        #expect(softnet.first == "--net-softnet")
+        #expect(softnet.contains { $0.hasPrefix("--net-softnet-block=") && $0.contains("192.168.0.0/16") })
         #expect(throws: GraftError.self) { try VMNetwork(spec: "bogus") }
 
         let json = #"{"name":"x","from":"b","network":"bridged:en8"}"#

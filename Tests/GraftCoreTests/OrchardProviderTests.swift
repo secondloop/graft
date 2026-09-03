@@ -99,6 +99,8 @@ struct OrchardProviderTests {
 
         let softnet = OrchardProvider.createArgs(name: "n", image: "i", os: .macOS, mounts: [], network: .softnet)
         #expect(softnet.contains("--net-softnet"))
+        let block = softnet.firstIndex(of: "--net-softnet-block")!
+        #expect(softnet[block + 1].contains("192.168.0.0/16"))
     }
 
     @Test("create args: pool cpu/memory → --cpu/--memory + a memory-mib resource request")

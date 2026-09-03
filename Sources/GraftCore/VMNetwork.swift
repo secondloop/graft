@@ -10,6 +10,11 @@ import Foundation
 /// `bridged="Wi-Fi"`, or `softnet`. Use `bridged:list` to make `tart` print the
 /// available bridged interfaces.
 public enum VMNetwork: Codable, Sendable, Equatable {
+    /// Explicitly block every non-public IPv4 range that can contain the vmnet
+    /// bridge gateway. Softnet's built-in policy otherwise permits that gateway,
+    /// which can expose host services (for example SSH) to an untrusted guest.
+    private static let privateIPv4Blocks = "10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4"
+
     case nat
     case bridged(String)
     case softnet
@@ -19,7 +24,7 @@ public enum VMNetwork: Codable, Sendable, Equatable {
         switch self {
         case .nat: return []
         case .bridged(let iface): return ["--net-bridged=\(iface)"]
-        case .softnet: return ["--net-softnet"]
+        case .softnet: return ["--net-softnet", "--net-softnet-block=\(Self.privateIPv4Blocks)"]
         }
     }
 
@@ -29,7 +34,7 @@ public enum VMNetwork: Codable, Sendable, Equatable {
         switch self {
         case .nat: return []
         case .bridged(let iface): return ["--net-bridged", iface]
-        case .softnet: return ["--net-softnet"]
+        case .softnet: return ["--net-softnet", "--net-softnet-block", Self.privateIPv4Blocks]
         }
     }
 
