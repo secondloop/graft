@@ -61,6 +61,17 @@ public struct OrchardProvider: VMProvider {
     }
 
     public func acquire(name: String, image: String, os: GuestOS, mounts: [Mount], network: VMNetwork, resources: VMResources, startupScript: String?, onProgress: (@Sendable (AcquireProgress) -> Void)?) async throws -> RunningVM {
+        try await acquire(name: name, image: image, os: os, mounts: mounts, network: network,
+                          resources: resources, placementLabels: [:], startupScript: startupScript,
+                          onProgress: onProgress)
+    }
+
+    /// Acquire a VM constrained to workers advertising every placement label. Orchard
+    /// performs the match atomically while scheduling, so callers can express image or
+    /// hardware capabilities without selecting a worker themselves.
+    public func acquire(name: String, image: String, os: GuestOS, mounts: [Mount], network: VMNetwork,
+                        resources: VMResources, placementLabels: [String: String], startupScript: String?,
+                        onProgress: (@Sendable (AcquireProgress) -> Void)?) async throws -> RunningVM {
         // Hand the runner bootstrap to the VM at create time via Orchard's StartupScript —
         // the *worker* (local to the VM) runs it once the guest is up. We never exec in.
         var scriptPath: String?
@@ -69,7 +80,9 @@ public struct OrchardProvider: VMProvider {
             try startupScript.write(to: url, atomically: true, encoding: .utf8)
             scriptPath = url.path
         }
-        let args = Self.createArgs(name: name, image: image, os: os, mounts: mounts, network: network, resources: resources, startupScriptPath: scriptPath)
+        let args = Self.createArgs(name: name, image: image, os: os, mounts: mounts, network: network,
+                                   resources: resources, placementLabels: placementLabels,
+                                   startupScriptPath: scriptPath)
 
         let created = try await Shell.run(Self.executable, args, environment: env, timeout: .seconds(30))
         if let scriptPath { try? FileManager.default.removeItem(atPath: scriptPath) }
@@ -316,7 +329,9 @@ public struct OrchardProvider: VMProvider {
     }
 
     /// The full `orchard create vm …` argv for an ephemeral runner VM.
-    static func createArgs(name: String, image: String, os: GuestOS, mounts: [Mount], network: VMNetwork, resources: VMResources = .none, startupScriptPath: String? = nil) -> [String] {
+    static func createArgs(name: String, image: String, os: GuestOS, mounts: [Mount], network: VMNetwork,
+                           resources: VMResources = .none, placementLabels: [String: String] = [:],
+                           startupScriptPath: String? = nil) -> [String] {
         // No --restart-policy: Orchard already defaults to "Never" (never auto-restart),
         // which is what ephemeral runners want. Passing it is fragile — the API only
         // accepts the capitalized "Never" and rejects the lowercase form.
@@ -331,6 +346,9 @@ public struct OrchardProvider: VMProvider {
             // Also request it as a schedulable resource so the controller only places
             // this leaf on a branch with that much memory free (no over-packing → OOM).
             args += ["--resources", "org.cirruslabs.memory-mib=\(memory)"]
+        }
+        for (key, value) in placementLabels.sorted(by: { $0.key < $1.key }) {
+            args += ["--labels", "\(key)=\(value)"]
         }
         for mount in mounts { args += ["--host-dirs", mount.tartDirArg] }
         args += network.orchardFlags
