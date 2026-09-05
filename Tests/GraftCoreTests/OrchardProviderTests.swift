@@ -121,6 +121,19 @@ struct OrchardProviderTests {
         #expect(!args.contains("--resources"))
     }
 
+    @Test("create args: placement labels constrain Orchard worker selection")
+    func createArgsPlacementLabels() {
+        let args = OrchardProvider.createArgs(
+            name: "n", image: "i", os: .macOS, mounts: [], network: .nat,
+            placementLabels: ["image-b": "present", "image-a": "present"]
+        )
+        let labelValues = args.indices.compactMap { index in
+            args[index] == "--labels" && index + 1 < args.count ? args[index + 1] : nil
+        }
+        #expect(labelValues == ["image-a=present", "image-b=present"])
+        #expect(args.last == "n")
+    }
+
     @Test("VM names carry the graft- prefix so the orphan sweep can find them")
     func namePrefix() {
         #expect(OrchardProvider.namePrefix == "graft-")
