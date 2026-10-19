@@ -324,3 +324,15 @@ struct OrchardConfigTests {
                    github: GitHubConfig(appId: 1, target: "org:o"))
     }
 }
+
+@Test func customReservationsPreservePlatformAccounting() {
+    let args = OrchardProvider.createArgs(name: "linux", image: "ubuntu", os: .linux,
+        mounts: [], network: .softnet,
+        resources: VMResources(cpu: 2, memory: 6144, reservations: [
+            "manzanita.linux-slots": 1, "org.cirruslabs.memory-mib": 0, "org.cirruslabs.tart-vms": 0
+        ]))
+    #expect(args.contains("manzanita.linux-slots=1"))
+    #expect(args.contains("org.cirruslabs.memory-mib=6144"))
+    #expect(!args.contains("org.cirruslabs.memory-mib=0"))
+    #expect(!args.contains("org.cirruslabs.tart-vms=0"))
+}
