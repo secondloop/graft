@@ -12,9 +12,14 @@ public func makeGraftVMName() -> String { "graft-" + UUID().uuidString.lowercase
 public struct VMResources: Sendable, Equatable {
     public var cpu: Int?
     public var memory: Int?   // megabytes
-    public init(cpu: Int? = nil, memory: Int? = nil) { self.cpu = cpu; self.memory = memory }
+    /// Additional Orchard scheduling reservations (for example, one Linux slot).
+    /// These do not change the guest's CPU or memory configuration.
+    public var reservations: [String: UInt64]
+    public init(cpu: Int? = nil, memory: Int? = nil, reservations: [String: UInt64] = [:]) {
+        self.cpu = cpu; self.memory = memory; self.reservations = reservations
+    }
     public static let none = VMResources()
-    public var isEmpty: Bool { cpu == nil && memory == nil }
+    public var isEmpty: Bool { cpu == nil && memory == nil && reservations.isEmpty }
 }
 
 /// Progress emitted during `acquire`, so the supervisor can show an honest phase:

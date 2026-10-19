@@ -347,6 +347,11 @@ public struct OrchardProvider: VMProvider {
             // this leaf on a branch with that much memory free (no over-packing → OOM).
             args += ["--resources", "org.cirruslabs.memory-mib=\(memory)"]
         }
+        for (key, value) in resources.reservations.sorted(by: { $0.key < $1.key }) {
+            // Never override built-in accounting or platform limits.
+            guard !key.hasPrefix("org.cirruslabs.") else { continue }
+            args += ["--resources", "\(key)=\(value)"]
+        }
         for (key, value) in placementLabels.sorted(by: { $0.key < $1.key }) {
             args += ["--labels", "\(key)=\(value)"]
         }
